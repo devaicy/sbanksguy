@@ -2401,9 +2401,8 @@ footer {
   display: block;
 }
 
-.footer_nav_link {
-  font-weight: 700;
-  font-size: 11rem;
+._link {
+  font-size: 2em;
   text-transform: uppercase;
   color: #1e1919;
 }
@@ -3040,7 +3039,7 @@ html {
 
   .footer_nav_link {
     text-align: center;
-    font-size: 7rem;
+    font-size: 10px;
   }
 
   .partners {
@@ -3987,6 +3986,7 @@ html {
   .footer_nav {
     margin: 40rem 0 16rem;
     justify-content: space-between;
+    font-size: 10px;
   }
 
   .footer_social {
